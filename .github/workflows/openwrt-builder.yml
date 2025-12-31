@@ -1,0 +1,216 @@
+#
+# https://github.com/P3TERX/Actions-OpenWrt
+#
+# File: .github/workflows/openwrt-bulder.yml
+# Description: Build OpenWrt using GitHub Actions
+#
+# Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
+#
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+
+name: OpenWrt Builder
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+
+env:
+  REPO_URL: https://github.com/coolsnowwolf/lede.git
+  REPO_BRANCH: master
+  REPO_COMMIT: 2ad20218e567a7307f88f7cd1ab6c75b0115f124
+  FEEDS_CONF: feeds.conf.default
+  CONFIG_FILE: t6.config
+  IMG_FILE: bg1.jpg
+  DIY_P1_SH: diy-part1.sh
+  DIY_P2_SH: diy-part2.sh
+  UPLOAD_BIN_DIR: true
+  UPLOAD_DL_DIR: false
+  UPLOAD_FIRMWARE: true
+  UPLOAD_OP_DIR: false
+  UPLOAD_RELEASE: true
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check Ubuntu version
+      run: lsb_release -a
+
+    - name: Check kernel version
+      run: uname -a
+
+    - name: Check OS release info
+      run: cat /etc/os-release
+
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: Initialization environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+        sudo docker image prune --all --force
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /mnt/workdir
+        sudo chown $USER:$GROUPS /mnt/workdir
+
+    - name: Clone source code
+      working-directory: /mnt/workdir
+      run: |
+        df -hT $PWD
+        git clone --branch $REPO_BRANCH $REPO_URL openwrt
+        cd openwrt && git reset --hard $REPO_COMMIT
+        ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+    - name: Load custom feeds
+      run: |
+        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+        chmod +x $DIY_P1_SH
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_P1_SH
+
+    - name: Update feeds
+      run: cd openwrt && ./scripts/feeds update -a
+
+    - name: Replace golang
+      run: cd openwrt && rm -rf feeds/packages/lang/golang && git clone -b 25.x --depth 1 https://github.com/sbwml/packages_lang_golang feeds/packages/lang/golang
+
+    - name: Replace passwall
+      run: cd openwrt && rm -rf feeds/luci/applications/luci-app-passwall && git clone -b 26.1.1-1 --depth 1 https://github.com/Openwrt-Passwall/openwrt-passwall.git feeds/luci/applications/luci-app-passwall  
+
+    - name: Replace passwall packages
+      run: cd openwrt && git clone -b main --depth 1 https://github.com/Openwrt-Passwall/openwrt-passwall-packages.git openwrt-passwall-packages && rm -rf feeds/packages/net/{xray-core,v2ray-geodata,sing-box,chinadns-ng,dns2socks,hysteria,ipt2socks,microsocks,naiveproxy,shadowsocks-libev,shadowsocks-rust,shadowsocksr-libev,simple-obfs,tcping,trojan-plus,tuic-client,v2ray-plugin,xray-plugin,geoview,shadow-tls} && mv openwrt-passwall-packages/* feeds/packages/net/ && rm -rf openwrt-passwall-packages
+
+    - name: Install feeds
+      run: cd openwrt && ./scripts/feeds install -a
+
+    - name: Replace argon
+      run: cd openwrt && rm -rf package/feeds/luci/luci-theme-argon feeds/luci/themes/luci-theme-argon && git clone --branch v2.4.3 --depth 1 https://github.com/jerrykuku/luci-theme-argon.git package/feeds/luci/luci-theme-argon
+
+    - name: Load custom configuration
+      run: |
+        [ -e files ] && mv files openwrt/files
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        [ -e $IMG_FILE ] && mv -f $IMG_FILE openwrt/package/feeds/luci/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
+        chmod +x $DIY_P2_SH
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_P2_SH
+
+    - name: Download package
+      id: package
+      run: |
+        cd openwrt
+        make download -j$(nproc)
+
+    - name: Tar dl directory
+      if: env.UPLOAD_DL_DIR == 'true'
+      run: cd /mnt/workdir/openwrt && tar -zcvf dl.tar.gz /mnt/workdir/openwrt/dl
+
+    - name: Upload dl directory
+      uses: actions/upload-artifact@main
+      if: env.UPLOAD_DL_DIR == 'true'
+      with:
+        name: OpenWrt_dl${{ env.FILE_DATE }}
+        path: /mnt/workdir/openwrt/dl.tar.gz
+
+    - name: Compile the firmware
+      id: compile
+      run: |
+        cd openwrt
+        echo -e "$(nproc) thread compile"
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        echo "status=success" >> $GITHUB_OUTPUT
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: Check space usage
+      if: (!cancelled())
+      run: df -hT
+      
+    - name: Tar op directory
+      if: env.UPLOAD_OP_DIR == 'true'
+      run: cd /mnt/workdir && tar -zcvf op.tar.gz /mnt/workdir/openwrt
+
+    - name: Upload op directory
+      uses: actions/upload-artifact@main
+      if: env.UPLOAD_OP_DIR == 'true'
+      with:
+        name: OpenWrt_op${{ env.FILE_DATE }}
+        path: /mnt/workdir/op.tar.gz
+      
+    - name: Create rootfs package
+      id: create_rootfs_package
+      run: |
+        cd /mnt/workdir/openwrt
+        mkdir -p friendlywrt
+        cp -r build_dir friendlywrt/
+        cp -r bin friendlywrt/
+        rootfs_filename="rootfs-friendlywrt-23.05-docker.tgz"
+        tar cvzf ../${rootfs_filename} friendlywrt/build_dir/target-aarch64_generic_musl/root-rockchip \
+                friendlywrt/bin/targets/rockchip/armv8/packages
+        echo "rootfs_filename=$rootfs_filename" >> $GITHUB_OUTPUT
+
+    - name: Get utc timestamp
+      id: timestamp
+      run: echo "time=$(date -u +'%Y-%m-%d-%H%M')" >> $GITHUB_OUTPUT
+
+    - name: Upload rootfs package and create release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: /mnt/workdir/${{ steps.create_rootfs_package.outputs.rootfs_filename }}
+        asset_name: ${{ steps.create_rootfs_package.outputs.rootfs_filename }}
+        tag: "lede-rootfs-${{ steps.timestamp.outputs.time }}"
+        overwrite: true
+
+    - name: Upload bin directory
+      uses: actions/upload-artifact@main
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      with:
+        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        path: openwrt/bin
+
+    - name: Organize files
+      id: organize
+      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      run: |
+        cd openwrt/bin/targets/*/*
+        rm -rf packages
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: Upload firmware directory
+      uses: actions/upload-artifact@main
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      with:
+        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+        path: ${{ env.FIRMWARE }}
+
+    - name: Generate release tag
+      id: tag
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+        touch release.txt
+        [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: Upload firmware to release
+      uses: softprops/action-gh-release@master
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        body_path: release.txt
+        files: ${{ env.FIRMWARE }}/*
