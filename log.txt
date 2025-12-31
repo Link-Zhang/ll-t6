@@ -1,0 +1,68 @@
+v0.1.X
+**************** >= should do these below **********************
+change from: CONFIG_DEFAULT_luci-app-arpbind=y
+         to: CONFIG_DEFAULT_luci-app-arpbind=n
+change from: CONFIG_DEFAULT_luci-app-autoreboot=y
+         to: CONFIG_DEFAULT_luci-app-autoreboot=n
+change from: CONFIG_DEFAULT_luci-app-ddns=y
+         to: CONFIG_DEFAULT_luci-app-ddns=n
+change from: CONFIG_DEFAULT_ddns-scripts_aliyun=y
+         to: CONFIG_DEFAULT_ddns-scripts_aliyun=n
+change from: CONFIG_DEFAULT_ddns-scripts_dnspod=y
+         to: CONFIG_DEFAULT_ddns-scripts_dnspod=n
+change from: CONFIG_DEFAULT_luci-app-nlbwmon=y
+         to: CONFIG_DEFAULT_luci-app-nlbwmon=n
+change from: CONFIG_DEFAULT_luci-app-upnp=y
+         to: CONFIG_DEFAULT_luci-app-upnp=n
+change from: CONFIG_DEFAULT_luci-app-vlmcsd=y
+         to: CONFIG_DEFAULT_luci-app-vlmcsd=n
+change from: CONFIG_DEFAULT_luci-app-vsftpd=y
+         to: CONFIG_DEFAULT_luci-app-vsftpd=n
+change from: CONFIG_DEFAULT_luci-app-wol=y
+         to: CONFIG_DEFAULT_luci-app-wol=n
+change from: CONFIG_DEFAULT_default-settings=y
+         to: CONFIG_DEFAULT_default-settings=n
+**************** >= should do these above **********************
+================================================================
+Rockchip
+FriendlyARM NanoPC T6
+tar.gz
+(64) Kernel partition size (in MiB)
+(960) Root filesystem partition size (in MiB)
+	---- luci-app-arpbind
+	---- luci-app-autoreboot
+	---- luci-app-ddns
+	---- ddns-scripts_aliyun
+	---- ddns-scripts_dnspod
+luci-app-diskman
+Include mdadm
+Include kmod-md-raid456
+Include kmod-md-linear
+luci-app-dockerman
+	---- luci-app-nlbwmon
+luci-app-passwall
+Include Hysteria
+Include NaiveProxy
+	---- Include Shadowsocks Rust Client
+Include ShadowsocksR Libev Server
+Include tuic-client
+Include V2ray_Geodata
+Include Xray-Plugin (Shadowsocks Plugin)
+	---- Include rclone-webui
+	---- Include rclone-ng (another webui)
+luci-app-samba4
+luci-app-statistics
+luci-app-ttyd
+	---- luci-app-upnp
+	---- luci-app-vlmcsd
+	---- luci-app-wol
+luci-ssl-openssl
+Minify Lua sources
+Minify JavaScript sources
+Minify CSS files
+Chinese Traditional (zh_Hant)
+	---- default-settings
+openssh-sftp-server
+bash
+hexedit
+vim
