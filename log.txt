@@ -66,3 +66,7 @@ openssh-sftp-server
 bash
 hexedit
 vim
+
+v0.2.x
+================================================================
+add some kernel video support
