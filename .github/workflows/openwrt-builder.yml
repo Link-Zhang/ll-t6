@@ -36,6 +36,15 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+    - name: Check Ubuntu version
+      run: lsb_release -a
+
+    - name: Check kernel version
+      run: uname -a
+
+    - name: Check OS release info
+      run: cat /etc/os-release
+
     - name: Checkout
       uses: actions/checkout@main
 
