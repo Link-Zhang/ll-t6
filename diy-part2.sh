@@ -15,9 +15,9 @@ sed -i 's|luci-theme-bootstrap|luci-theme-argon|g' feeds/luci/collections/luci-l
 
 # Modify smb
 #sed -i 's|445|25445|g' feeds/packages/net/samba4/files/samba.init
-#sed -i 's|invalid users = root|#invalid users = root|g' feeds/packages/net/samba4/files/smb.conf.template
-#sed -i 's|null passwords = yes|#null passwords = yes|g' feeds/packages/net/samba4/files/smb.conf.template
-#sed -i 's|#dns proxy = No|dns proxy = No|g' feeds/packages/net/samba4/files/smb.conf.template
+sed -i 's|invalid users = root|#invalid users = root|g' feeds/packages/net/samba4/files/smb.conf.template
+sed -i 's|null passwords = yes|#null passwords = yes|g' feeds/packages/net/samba4/files/smb.conf.template
+sed -i 's|#dns proxy = No|dns proxy = No|g' feeds/packages/net/samba4/files/smb.conf.template
 
 # Modify hostname
 sed -i 's|LEDE|NanoPC-T6|g' package/base-files/files/bin/config_generate
@@ -36,6 +36,6 @@ sed -i '24,26d' package/feeds/luci/luci-theme-argon/luasrc/view/themes/argon/foo
 sed -i 's|/services/|/system/|g' feeds/luci/applications/luci-app-ttyd/root/usr/share/luci/menu.d/luci-app-ttyd.json
 
 # Change from services to nas
-#sed -i 's|/services/|/nas/|g' feeds/luci/applications/luci-app-samba4/root/usr/share/luci/menu.d/luci-app-samba4.json
-sed -i 's|/services/|/nas/|g' feeds/luci/applications/luci-app-ksmbd/root/usr/share/luci/menu.d/luci-app-ksmbd.json
+sed -i 's|/services/|/nas/|g' feeds/luci/applications/luci-app-samba4/root/usr/share/luci/menu.d/luci-app-samba4.json
+#sed -i 's|/services/|/nas/|g' feeds/luci/applications/luci-app-ksmbd/root/usr/share/luci/menu.d/luci-app-ksmbd.json
 
